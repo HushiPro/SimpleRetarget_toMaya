@@ -117,33 +117,22 @@
 
 ## 安装 / Installation
 
-将 `SimpleRetarget` 文件夹放置到 **hushTool** 的 `Addon` 目录下：
+将 `SimpleRetarget` 文件夹放置到 Maya scripts folder (Username\Documents\maya\scripts)
 
-Place the `SimpleRetarget` folder into the **hushTool** `Addon` directory:
+Place the `SimpleRetarget` folder into the Maya scripts folder (Username\Documents\maya\scripts)
 
-```
-hushTool/
-└── Addon/
-    └── SimpleRetarget/
-        ├── command.py
-        ├── tool.cfg
-        └── Python/
-            └── SimpleRetarget/
-                ├── __init__.py
-                ├── main_window.py
-                ├── character_panel.py
-                ├── matching_panel.py
-                ├── hypergraph_widget.py
-                ├── graph_items.py
-                ├── core.py
-                ├── constants.py
-                ├── compat.py
-                └── batch_export.py
-```
+为了在maya中启动工具，你需要打开maya的脚本编辑器然后输入：
 
-通过 hushTool 启动器加载后，工具会自动注册并可用。
+import SimpleRetarget
+SimpleRetarget.start()
 
-After loading through the hushTool launcher, the tool will be automatically registered and available.
+⚠️记得把他们存为工具栏按钮
+
+To start the tool within Maya, run these these lines of code from the Maya script editor or add them to a shelf button:
+
+import SimpleRetarget
+SimpleRetarget.start()
+
 
 ---
 
