@@ -121,17 +121,21 @@
 
 Place the `SimpleRetarget` folder into the Maya scripts folder (Username\Documents\maya\scripts)
 
-为了在maya中启动工具，你需要打开maya的脚本编辑器然后输入：
+为了在 Maya 中启动工具，你需要打开 Maya 的脚本编辑器然后输入：
 
+```python
 import SimpleRetarget
 SimpleRetarget.start()
+```
 
-⚠️记得把他们存为工具栏按钮
+⚠️ 记得把它们存为工具栏按钮
 
-To start the tool within Maya, run these these lines of code from the Maya script editor or add them to a shelf button:
+To start the tool within Maya, run these lines of code from the Maya script editor or add them to a shelf button:
 
+```python
 import SimpleRetarget
 SimpleRetarget.start()
+```
 
 
 ---
