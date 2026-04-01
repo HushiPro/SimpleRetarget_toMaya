@@ -1,3 +1,5 @@
+![SimpleRetarget UI](./20260401-160346.jpg)
+
 # SimpleRetarget — Animation Retargeting Tool for Maya
 
 > 本工具基于 GitHub 用户 **[joaen](https://github.com/joaen)** 的开源项目 **[animation-retargeting-tool](https://github.com/joaen/animation-retargeting-tool)** 改进而来，在原有功能基础上重新设计了用户界面与交互体验。
