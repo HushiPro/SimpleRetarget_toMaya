@@ -18,6 +18,8 @@ from .graph_items import GraphNodeItem, GraphEdgeItem
 class ZoomableGraphicsView(QtWidgets.QGraphicsView):
     """QGraphicsView with mouse-wheel zoom and middle-button pan."""
 
+    MIN_READABLE_PX = 200
+
     def __init__(self, parent=None):
         super(ZoomableGraphicsView, self).__init__(parent)
         self._zoom = 1.0
@@ -38,6 +40,30 @@ class ZoomableGraphicsView(QtWidgets.QGraphicsView):
             self._zoom = new_zoom
             self.scale(factor, factor)
 
+    def _clamp_min_scale(self, reference_width=None):
+        """Ensure the current scale keeps nodes at a readable size."""
+        if reference_width is None:
+            reference_width = self._max_item_width()
+        if reference_width <= 0:
+            return
+        cur_scale = self.transform().m11()
+        min_scale = float(self.MIN_READABLE_PX) / reference_width
+        if cur_scale < min_scale:
+            ratio = min_scale / cur_scale
+            self.scale(ratio, ratio)
+        self._zoom = self.transform().m11()
+
+    def _max_item_width(self):
+        """Return the largest bounding-rect width among scene items."""
+        if not self.scene():
+            return NODE_WIDTH
+        max_w = 0
+        for item in self.scene().items():
+            br = item.boundingRect()
+            if br.width() > max_w and br.height() > 10:
+                max_w = br.width()
+        return max_w if max_w > 0 else NODE_WIDTH
+
     def fit_contents(self):
         """Fit scene into view, but guarantee nodes stay readable."""
         if not self.scene():
@@ -47,16 +73,34 @@ class ZoomableGraphicsView(QtWidgets.QGraphicsView):
             return
         padded = sr.adjusted(-40, -40, 40, 40)
         self.fitInView(padded, QtCore.Qt.KeepAspectRatio)
-        # Clamp so nodes are never smaller than ~120 px on screen
+        self._clamp_min_scale()
+
+    def focus_on_selection(self):
+        """Zoom to fit the selected items, or fit all if nothing is selected."""
+        if not self.scene():
+            return
+        selected = self.scene().selectedItems()
+        if not selected:
+            self.fit_contents()
+            return
+
+        union = QtCore.QRectF()
+        for item in selected:
+            union = union.united(item.sceneBoundingRect())
+        if union.isEmpty():
+            self.fit_contents()
+            return
+
+        padded = union.adjusted(-60, -60, 60, 60)
+        self.fitInView(padded, QtCore.Qt.KeepAspectRatio)
+
         cur_scale = self.transform().m11()
-        max_node_width = max(
-            [item.rect().width() for item in self.node_items.values()] or [NODE_WIDTH]
-        )
-        min_scale = 120.0 / max(max_node_width, 1)
-        if cur_scale < min_scale:
-            ratio = min_scale / cur_scale
+        if cur_scale > 2.0:
+            ratio = 2.0 / cur_scale
             self.scale(ratio, ratio)
         self._zoom = self.transform().m11()
+
+        self.centerOn(union.center())
 
     def center_on_root(self, root_item):
         """Show *root_item* at 1:1 scale near the top-left of the view."""
@@ -67,7 +111,11 @@ class ZoomableGraphicsView(QtWidgets.QGraphicsView):
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_F:
-            self.fit_contents()
+            selected = self.scene().selectedItems() if self.scene() else []
+            if selected:
+                self.focus_on_selection()
+            else:
+                self.fit_contents()
         else:
             super(ZoomableGraphicsView, self).keyPressEvent(event)
 

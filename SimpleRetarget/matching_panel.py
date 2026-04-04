@@ -311,6 +311,11 @@ class MatchingPanel(QtWidgets.QWidget):
     # -------------------------------------------------------- rebuild graph
 
     def _rebuild_slot_graph(self):
+        had_items = bool(self.slot_items)
+        saved_transform = self._view.transform()
+        saved_center = self._view.mapToScene(
+            self._view.viewport().rect().center())
+
         self._scene.clear()
         self.slot_items.clear()
         self.slot_edges.clear()
@@ -335,7 +340,12 @@ class MatchingPanel(QtWidgets.QWidget):
                 self.slot_edges.append(edge)
 
         if self.slot_items:
-            self._view.fit_contents()
+            if had_items:
+                self._view.setTransform(saved_transform)
+                self._view.centerOn(saved_center)
+            else:
+                first_item = next(iter(self.slot_items.values()))
+                self._view.center_on_root(first_item)
         self._update_status()
 
     def _subtree_width(self, slot):

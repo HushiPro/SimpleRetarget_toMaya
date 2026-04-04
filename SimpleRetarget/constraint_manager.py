@@ -26,7 +26,6 @@ def _measure_item_width(info):
 class ConstraintManagerView(ZoomableGraphicsView):
     def __init__(self, parent=None):
         super(ConstraintManagerView, self).__init__(parent)
-        self.node_items = {}
         self.setDragMode(QtWidgets.QGraphicsView.RubberBandDrag)
         self.setRubberBandSelectionMode(QtCore.Qt.IntersectsItemShape)
 
