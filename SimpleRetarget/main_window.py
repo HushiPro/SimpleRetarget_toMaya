@@ -12,6 +12,7 @@ from . import core
 from .character_panel import CharacterPanel
 from .matching_panel import MatchingPanel
 from .batch_export import BatchExport
+from .constraint_manager import ConstraintManager
 
 
 class RetargetingTool(QtWidgets.QDialog):
@@ -25,6 +26,7 @@ class RetargetingTool(QtWidgets.QDialog):
         self.script_job_ids = []
         self.color_counter = 0
         self._batch_window = None
+        self._constraint_window = None
 
         self.setWindowTitle(self.WINDOW_TITLE)
         self.setWindowFlags(
@@ -87,6 +89,9 @@ class RetargetingTool(QtWidgets.QDialog):
         self.batch_btn = QtWidgets.QPushButton("Batch Bake && Export...")
         self.batch_btn.setMinimumHeight(32)
 
+        self.constraints_btn = QtWidgets.QPushButton("Manage Constraints")
+        self.constraints_btn.setMinimumHeight(32)
+
         self.refresh_ikfk_btn = QtWidgets.QPushButton("Refresh IK/FK")
         self.refresh_ikfk_btn.setMinimumHeight(32)
 
@@ -97,6 +102,7 @@ class RetargetingTool(QtWidgets.QDialog):
         buttons_layout.addWidget(self.apply_btn)
         buttons_layout.addWidget(self.refresh_ikfk_btn)
         buttons_layout.addWidget(self.batch_btn)
+        buttons_layout.addWidget(self.constraints_btn)
         buttons_layout.addWidget(self.bake_btn)
         buttons_layout.addWidget(self.help_btn)
 
@@ -117,6 +123,7 @@ class RetargetingTool(QtWidgets.QDialog):
         self.apply_btn.clicked.connect(self._refresh_all_connections)
         self.bake_btn.clicked.connect(self._bake_animation_confirm)
         self.batch_btn.clicked.connect(self._open_batch_window)
+        self.constraints_btn.clicked.connect(self._open_constraint_window)
         self.help_btn.clicked.connect(self._help_dialog)
         self.refresh_ikfk_btn.clicked.connect(self._refresh_ik_fk)
 
@@ -164,6 +171,8 @@ class RetargetingTool(QtWidgets.QDialog):
             connected_targets.add(target)
 
         self.matching_panel.mark_slots_connected(connected_sources)
+        if self._constraint_window:
+            self._constraint_window.refresh_constraints()
 
     def _bake_animation_confirm(self):
         result = cmds.confirmDialog(
@@ -191,6 +200,8 @@ class RetargetingTool(QtWidgets.QDialog):
         core.bake_animation()
         progress.close()
         self.matching_panel.mark_slots_connected(set())
+        if self._constraint_window:
+            self._constraint_window.refresh_constraints()
 
     def _refresh_ik_fk(self):
         self.source_panel.hypergraph.refresh_ik_fk_states()
@@ -230,6 +241,15 @@ class RetargetingTool(QtWidgets.QDialog):
             pass
         self._batch_window = BatchExport()
         self._batch_window.show()
+
+    def _open_constraint_window(self):
+        try:
+            self._constraint_window.close()
+            self._constraint_window.deleteLater()
+        except Exception:
+            pass
+        self._constraint_window = ConstraintManager()
+        self._constraint_window.show()
 
     # ============================================================ lifecycle
 

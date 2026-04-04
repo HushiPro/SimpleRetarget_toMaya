@@ -11,7 +11,7 @@ from .constants import (
 )
 from . import core
 from .core import SlotData
-from .graph_items import SlotNodeItem, SlotEdgeItem
+from .graph_items import SlotNodeItem, SlotEdgeItem, measure_slot_width
 from .hypergraph_widget import ZoomableGraphicsView
 
 
@@ -188,7 +188,7 @@ class MatchingPanel(QtWidgets.QWidget):
                 mirror_slot_item._update_tooltip()
                 mirror_slot_item.update()
 
-        self._update_status()
+        self._rebuild_slot_graph()
 
     def disconnect_slot(self, slot_item):
         """Disconnect a single slot: remove Maya constraints, clear target,
@@ -198,8 +198,7 @@ class MatchingPanel(QtWidgets.QWidget):
         slot_item.slot_data.target_node = None
         slot_item._connected = False
         slot_item._update_tooltip()
-        slot_item.update()
-        self._update_status()
+        self._rebuild_slot_graph()
 
     def mark_slots_connected(self, connected_sources):
         """Update the connected visual on slot items."""
@@ -213,6 +212,10 @@ class MatchingPanel(QtWidgets.QWidget):
             self.slot_data_list.remove(slot_data)
         source_graph = self.parent_tool.source_panel.hypergraph
         self._rebuild_slot_hierarchy(source_graph)
+        self._rebuild_slot_graph()
+
+    def relayout_slots(self):
+        """Rebuild the slot graph after text/width changes."""
         self._rebuild_slot_graph()
 
     def clear_all_slots(self):
@@ -303,7 +306,7 @@ class MatchingPanel(QtWidgets.QWidget):
                 item.slot_data.target_node = None
                 item._update_tooltip()
                 item.update()
-        self._update_status()
+        self._rebuild_slot_graph()
 
     # -------------------------------------------------------- rebuild graph
 
@@ -336,17 +339,24 @@ class MatchingPanel(QtWidgets.QWidget):
         self._update_status()
 
     def _subtree_width(self, slot):
+        slot_width = self._slot_width(slot)
         if not slot.children:
-            return SLOT_WIDTH
+            return slot_width
         w = sum(self._subtree_width(c) for c in slot.children)
         w += SLOT_SIBLING_GAP * (len(slot.children) - 1)
-        return max(SLOT_WIDTH, w)
+        return max(slot_width, w)
+
+    def _slot_width(self, slot):
+        item = self.slot_items.get(slot.source_node)
+        if item:
+            return item.boundingRect().width()
+        return measure_slot_width(slot)
 
     def _position_subtree(self, slot, x, y):
         sw = self._subtree_width(slot)
         item = SlotNodeItem(slot, self)
         self._scene.addItem(item)
-        item.setPos(x + (sw - SLOT_WIDTH) / 2, y)
+        item.setPos(x + (sw - item.boundingRect().width()) / 2, y)
         self.slot_items[slot.source_node] = item
 
         if slot.children:

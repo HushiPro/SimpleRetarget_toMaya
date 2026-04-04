@@ -49,7 +49,10 @@ class ZoomableGraphicsView(QtWidgets.QGraphicsView):
         self.fitInView(padded, QtCore.Qt.KeepAspectRatio)
         # Clamp so nodes are never smaller than ~120 px on screen
         cur_scale = self.transform().m11()
-        min_scale = 120.0 / max(NODE_WIDTH, 1)
+        max_node_width = max(
+            [item.rect().width() for item in self.node_items.values()] or [NODE_WIDTH]
+        )
+        min_scale = 120.0 / max(max_node_width, 1)
         if cur_scale < min_scale:
             ratio = min_scale / cur_scale
             self.scale(ratio, ratio)
@@ -170,6 +173,10 @@ class HypergraphWidget(ZoomableGraphicsView):
             self._position_subtree(root, 0, y_offset)
             y_offset += sh + GRAPH_SIBLING_GAP * 3
 
+    def _node_width(self, name):
+        item = self.node_items.get(name)
+        return item.rect().width() if item else NODE_WIDTH
+
     def _compute_depth(self, name, depth):
         data = self.node_data_map.get(name)
         if not data:
@@ -196,7 +203,7 @@ class HypergraphWidget(ZoomableGraphicsView):
         data = self.node_data_map.get(name)
         if data and data.children:
             child_y = y
-            child_x = x + NODE_WIDTH + GRAPH_DEPTH_GAP
+            child_x = x + self._node_width(name) + GRAPH_DEPTH_GAP
             for child in data.children:
                 ch = self._subtree_height(child)
                 self._position_subtree(child, child_x, child_y)

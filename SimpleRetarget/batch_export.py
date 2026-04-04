@@ -110,13 +110,34 @@ class BatchExport(QtWidgets.QDialog):
     def _animation_filepath_dialog(self):
         paths = QtWidgets.QFileDialog.getOpenFileNames(
             self, "Select Animation Clips", "",
-            "FBX (*.fbx);;All files (*.*)")
+            "Supported Files (*.fbx *.ma);;FBX (*.fbx);;Maya ASCII (*.ma);;All files (*.*)")
         file_list = paths[0]
         if file_list and file_list[0]:
             for p in file_list:
                 self.file_list_widget.addItem(p)
         for i in range(self.file_list_widget.count()):
             set_list_item_color(self.file_list_widget.item(i), "white")
+
+    def _import_animation_clip(self, clip_path):
+        """Import one animation clip into the opened connection rig scene."""
+        ext = os.path.splitext(clip_path)[1].lower()
+        if ext == ".fbx":
+            maya.mel.eval('FBXImportMode -v "exmerge";')
+            maya.mel.eval('FBXImport -file "{}";'.format(clip_path))
+            return
+        if ext == ".ma":
+            cmds.file(
+                clip_path,
+                i=True,
+                type="mayaAscii",
+                ignoreVersion=True,
+                ra=True,
+                mergeNamespacesOnClash=True,
+                namespace=":",
+                options="v=0;",
+            )
+            return
+        raise RuntimeError("Unsupported animation file: {}".format(clip_path))
 
     def _add_selected_action(self):
         selection = cmds.ls(selection=True)
@@ -181,8 +202,7 @@ class BatchExport(QtWidgets.QDialog):
 
             cmds.file(new=True, force=True)
             cmds.file(self.connection_file_line.text(), open=True)
-            maya.mel.eval('FBXImportMode -v "exmerge";')
-            maya.mel.eval('FBXImport -file "{}";'.format(clip_path))
+            self._import_animation_clip(clip_path)
             progress.setValue(idx * 3 + 1)
 
             core.bake_animation()

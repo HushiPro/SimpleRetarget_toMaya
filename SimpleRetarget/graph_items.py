@@ -11,6 +11,59 @@ from .constants import (
 )
 
 
+def _text_width(metrics, text):
+    """Cross-version text width measurement (Qt 5.11+ / Qt 6)."""
+    if hasattr(metrics, 'horizontalAdvance'):
+        return metrics.horizontalAdvance(text)
+    return metrics.width(text)
+
+
+_SLOT_FONT = None
+_SLOT_METRICS = None
+
+
+def _slot_font_and_metrics():
+    global _SLOT_FONT, _SLOT_METRICS
+    if _SLOT_FONT is None:
+        _SLOT_FONT = QtGui.QFont("Segoe UI", 10)
+        _SLOT_METRICS = QtGui.QFontMetrics(_SLOT_FONT)
+    return _SLOT_FONT, _SLOT_METRICS
+
+
+def measure_graph_node_width(name):
+    font = QtGui.QFont("Segoe UI", 10)
+    metrics = QtGui.QFontMetrics(font)
+    return max(NODE_WIDTH, _text_width(metrics, name) + 32)
+
+
+# Padding budget inside a slot:
+#   left-dot(24) + source_text + gap(16) + arrow(20) + gap(16) + target_text + right-dot(24)
+_SLOT_FIXED_PADDING = 100
+
+
+def measure_slot_width(slot_data):
+    _, metrics = _slot_font_and_metrics()
+    src_w = _text_width(metrics, slot_data.source_node or "")
+    tgt_w = _text_width(metrics, slot_data.target_node or "(assign target)")
+    return max(SLOT_WIDTH, src_w + tgt_w + _SLOT_FIXED_PADDING)
+
+
+def compute_slot_divider_x(slot_data, total_width):
+    """Return the x-coordinate of the centre divider for a given slot."""
+    _, metrics = _slot_font_and_metrics()
+    src_w = _text_width(metrics, slot_data.source_node or "")
+    tgt_w = _text_width(metrics, slot_data.target_node or "(assign target)")
+
+    available = total_width - _SLOT_FIXED_PADDING
+    if src_w + tgt_w > 0:
+        ratio = src_w / float(src_w + tgt_w)
+    else:
+        ratio = 0.5
+    divider = 24 + available * ratio + 16
+    divider = max(total_width * 0.2, min(divider, total_width * 0.8))
+    return divider
+
+
 # ============================================================
 #  Hypergraph items
 # ============================================================
@@ -19,7 +72,8 @@ class GraphNodeItem(QtWidgets.QGraphicsRectItem):
     """Interactive node representing a bone or curve controller."""
 
     def __init__(self, node_data, hypergraph_widget):
-        super(GraphNodeItem, self).__init__(0, 0, NODE_WIDTH, NODE_HEIGHT)
+        super(GraphNodeItem, self).__init__(
+            0, 0, measure_graph_node_width(node_data.name), NODE_HEIGHT)
         self.node_data = node_data
         self.hypergraph_widget = hypergraph_widget
         self._hovered = False
@@ -33,15 +87,11 @@ class GraphNodeItem(QtWidgets.QGraphicsRectItem):
         font = QtGui.QFont("Segoe UI", 10)
         self.label.setFont(font)
         self.label.setDefaultTextColor(QtGui.QColor(COLORS['text']))
-
-        display_name = node_data.name
-        if len(display_name) > 22:
-            display_name = display_name[:20] + '..'
-        self.label.setPlainText(display_name)
+        self.label.setPlainText(node_data.name)
 
         text_rect = self.label.boundingRect()
         self.label.setPos(
-            (NODE_WIDTH - text_rect.width()) / 2,
+            (self.rect().width() - text_rect.width()) / 2,
             (NODE_HEIGHT - text_rect.height()) / 2,
         )
 
@@ -136,6 +186,7 @@ class SlotNodeItem(QtWidgets.QGraphicsItem):
         self.matching_panel = matching_panel
         self._hovered = False
         self._connected = False
+        self._width = measure_slot_width(slot_data)
 
         self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable, True)
         self.setAcceptHoverEvents(True)
@@ -145,13 +196,14 @@ class SlotNodeItem(QtWidgets.QGraphicsItem):
     def _update_tooltip(self):
         target = self.slot_data.target_node or '(empty)'
         mode = ' [IK]' if self.slot_data.is_ik else ''
+        self._width = measure_slot_width(self.slot_data)
         self.setToolTip("Source: {}\nTarget: {}{}".format(
             self.slot_data.source_node, target, mode))
 
     # ---- geometry / paint ----
 
     def boundingRect(self):
-        return QtCore.QRectF(0, 0, SLOT_WIDTH, SLOT_HEIGHT)
+        return QtCore.QRectF(0, 0, self._width, SLOT_HEIGHT)
 
     def paint(self, painter, option, widget=None):
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -179,27 +231,28 @@ class SlotNodeItem(QtWidgets.QGraphicsItem):
         painter.setBrush(bg)
         painter.drawRoundedRect(rect, 10, 10)
 
-        mid_x = rect.width() / 2
+        div_x = compute_slot_divider_x(self.slot_data, rect.width())
 
         # centre divider
         painter.setPen(QtGui.QPen(QtGui.QColor('#444444'), 1))
         painter.drawLine(
-            QtCore.QPointF(mid_x, 6),
-            QtCore.QPointF(mid_x, rect.height() - 6),
+            QtCore.QPointF(div_x, 6),
+            QtCore.QPointF(div_x, rect.height() - 6),
         )
 
-        font = QtGui.QFont("Segoe UI", 10)
+        font, _ = _slot_font_and_metrics()
         painter.setFont(font)
 
         # IK badge
         if self.slot_data.is_ik:
             painter.setPen(QtCore.Qt.NoPen)
             painter.setBrush(QtGui.QColor('#d9534f'))
-            painter.drawRoundedRect(QtCore.QRectF(mid_x - 28, 3, 24, 15), 4, 4)
+            painter.drawRoundedRect(
+                QtCore.QRectF(div_x - 28, 3, 24, 15), 4, 4)
             painter.setPen(QtGui.QColor('#ffffff'))
             tiny = QtGui.QFont("Segoe UI", 7, QtGui.QFont.Bold)
             painter.setFont(tiny)
-            painter.drawText(QtCore.QRectF(mid_x - 28, 3, 24, 15),
+            painter.drawText(QtCore.QRectF(div_x - 28, 3, 24, 15),
                              QtCore.Qt.AlignCenter, "IK")
             painter.setFont(font)
 
@@ -208,44 +261,43 @@ class SlotNodeItem(QtWidgets.QGraphicsItem):
         painter.setBrush(QtGui.QColor(COLORS['slot_source']))
         painter.drawEllipse(QtCore.QPointF(12, rect.height() / 2), 5, 5)
 
-        # source name
+        # source name (full width from dot to divider)
         painter.setPen(QtGui.QColor(COLORS['text_bright']))
-        src = self.slot_data.source_node
-        if len(src) > 18:
-            src = src[:16] + '..'
         painter.drawText(
-            QtCore.QRectF(24, 0, mid_x - 34, rect.height()),
-            QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft, src,
+            QtCore.QRectF(24, 0, div_x - 34, rect.height()),
+            QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft,
+            self.slot_data.source_node,
         )
 
         # arrow
         painter.setPen(QtGui.QColor('#888888'))
         painter.setFont(QtGui.QFont("Segoe UI", 12))
         painter.drawText(
-            QtCore.QRectF(mid_x - 10, 0, 20, rect.height()),
+            QtCore.QRectF(div_x - 10, 0, 20, rect.height()),
             QtCore.Qt.AlignCenter, u"\u2192",
         )
 
-        # target side
+        # target side (full width from divider to right dot)
         painter.setFont(font)
+        tgt_left = div_x + 8
+        tgt_width = rect.width() - tgt_left - 24
         if self.slot_data.target_node:
             painter.setPen(QtCore.Qt.NoPen)
             painter.setBrush(QtGui.QColor(COLORS['slot_target']))
             painter.drawEllipse(
                 QtCore.QPointF(rect.width() - 12, rect.height() / 2), 5, 5)
             painter.setPen(QtGui.QColor(COLORS['text_bright']))
-            tgt = self.slot_data.target_node
-            if len(tgt) > 18:
-                tgt = tgt[:16] + '..'
             painter.drawText(
-                QtCore.QRectF(mid_x + 8, 0, mid_x - 24, rect.height()),
-                QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft, tgt,
+                QtCore.QRectF(tgt_left, 0, tgt_width, rect.height()),
+                QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft,
+                self.slot_data.target_node,
             )
         else:
             painter.setPen(QtGui.QColor(COLORS['text_dim']))
             painter.drawText(
-                QtCore.QRectF(mid_x + 8, 0, mid_x - 24, rect.height()),
-                QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft, "(assign target)",
+                QtCore.QRectF(tgt_left, 0, tgt_width, rect.height()),
+                QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft,
+                "(assign target)",
             )
 
     # ---- interaction ----
@@ -263,7 +315,9 @@ class SlotNodeItem(QtWidgets.QGraphicsItem):
     def mousePressEvent(self, event):
         super(SlotNodeItem, self).mousePressEvent(event)
         if event.button() == QtCore.Qt.LeftButton:
-            if event.pos().x() > SLOT_WIDTH / 2:
+            div_x = compute_slot_divider_x(
+                self.slot_data, self.boundingRect().width())
+            if event.pos().x() > div_x:
                 self.matching_panel.assign_target_to_slot(self)
 
     def contextMenuEvent(self, event):
@@ -279,11 +333,11 @@ class SlotNodeItem(QtWidgets.QGraphicsItem):
         if chosen == ik_action:
             self.slot_data.is_ik = not self.slot_data.is_ik
             self._update_tooltip()
-            self.update()
+            self.matching_panel.relayout_slots()
         elif chosen == remove_tgt:
             self.slot_data.target_node = None
             self._update_tooltip()
-            self.update()
+            self.matching_panel.relayout_slots()
         elif chosen == disconnect_action:
             self.matching_panel.disconnect_slot(self)
         elif chosen == remove_slot:
