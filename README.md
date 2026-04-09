@@ -112,7 +112,7 @@
 | 项目 / Item | 要求 / Requirement |
 |---|---|
 | **Maya 版本** | 2017 及以上 / 2017 and above |
-| **Qt 框架** | Maya < 2025: PySide2 + shiboken2（Maya 内置）<br>Maya >= 2025: PySide6 + shiboken6（Maya 内置） |
+| **Qt 框架** | 2023<=Maya < 2025:<br>Maya >= 2025: PySide6 + shiboken6（Maya 内置） |
 | **FBX 插件** | 批量导出功能需要 Maya FBX 插件可用 / FBX plugin required for batch export |
 | **操作系统** | Windows / macOS（已适配 macOS 窗口标志） |
 
