@@ -8,6 +8,7 @@
 ---
 
 ![SimpleRetarget UI](./20260401-160346.jpg)
+![SimpleRetarget UI](./2.gif)
 
 ## 简介 / Introduction
 
@@ -22,9 +23,17 @@
 ### 双角色超图视图 / Dual Character Hypergraph
 
 - 左侧面板加载 **源角色**（Source Character，带动画的骨骼/绑定）
+
+![SimpleRetarget UI](./20260409185041_rec_.gif)
+
 - 右侧面板加载 **目标角色**（Target Character，接收动画的绑定）
+
+![SimpleRetarget UI](./20260409185250_rec_.gif)
+
 - 支持 **Bones**（关节层级）和 **Curves**（NURBS 曲线控制器层级）两种显示模式
 - 超图内按 **F** 键适配视图，与 Maya 视口选择实时同步
+
+![SimpleRetarget UI](./20260409185325_rec_.gif)
 
 ---
 
@@ -112,7 +121,7 @@
 | 项目 / Item | 要求 / Requirement |
 |---|---|
 | **Maya 版本** | 2017 及以上 / 2017 and above |
-| **Qt 框架** | 2023<=Maya < 2025:<br>Maya >= 2025: PySide6 + shiboken6（Maya 内置） |
+| **Qt 框架** | 2023<=Maya < 2025: PySide2 + shiboken2（Maya 内置）<br>Maya >= 2025: PySide6 + shiboken6（Maya 内置） |
 | **FBX 插件** | 批量导出功能需要 Maya FBX 插件可用 / FBX plugin required for batch export |
 | **操作系统** | Windows / macOS（已适配 macOS 窗口标志） |
 
@@ -132,6 +141,10 @@ SimpleRetarget.start()
 ```
 
 ⚠️ 记得把它们存为工具栏按钮
+
+icon
+
+![SimpleRetarget UI](./SimpleRetarget_icon.png)
 
 To start the tool within Maya, run these lines of code from the Maya script editor or add them to a shelf button:
 
