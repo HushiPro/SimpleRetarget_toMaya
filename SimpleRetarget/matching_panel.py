@@ -226,9 +226,19 @@ class MatchingPanel(QtWidgets.QWidget):
         self._update_status()
 
     def get_all_mappings(self):
-        """Return ``[(source, target, is_ik), ...]`` for assigned slots."""
+        """Return mapping tuples for assigned slots.
+
+        Format:
+        ``[(source, target, is_ik, rotation_override, translation_override), ...]``
+        """
         return [
-            (s.source_node, s.target_node, s.is_ik)
+            (
+                s.source_node,
+                s.target_node,
+                s.is_ik,
+                s.rotation_override,
+                s.translation_override,
+            )
             for s in self.slot_data_list
             if s.target_node
         ]

@@ -24,7 +24,7 @@ class NodeData:
 
     def __init__(self, name, node_type='joint', parent_name=None):
         self.name = name
-        self.node_type = node_type      # 'joint' | 'curve'
+        self.node_type = node_type      # 'joint' | 'curve' | 'locator'
         self.parent_name = parent_name
         self.children = []
         self.depth = 0
@@ -42,6 +42,9 @@ class SlotData:
         self.parent_slot = parent_slot
         self.children = []
         self.is_ik = False              # per-slot IK connection mode
+        # None = use global checkbox; True/False = per-slot override
+        self.rotation_override = None
+        self.translation_override = None
 
 
 def _ensure_string_attr(node, attr_name):
@@ -425,7 +428,8 @@ def create_connection(source_node, target_ctrl, do_rotation, do_translation,
             cmds.deleteAttr(target_ctrl, at="ConnectedCtrl")
 
 
-def create_ik_connection(source_node, target_ctrl, snap_to_position, color_index):
+def create_ik_connection(source_node, target_ctrl, snap_to_position, color_index,
+                         do_rotation=True, do_translation=True):
     """Create an IK connection with separate rotation and translation channels."""
     if snap_to_position:
         cmds.matchTransform(target_ctrl, source_node, pos=True)
@@ -455,9 +459,24 @@ def create_ik_connection(source_node, target_ctrl, snap_to_position, color_index
         source_node, tran_locator, maintainOffset=False)
     _mark_generated_constraint(orient_constraint, tran_locator, source_node)
 
-    parent_constraint = cmds.parentConstraint(
-        rot_locator, target_ctrl, maintainOffset=True)
-    _mark_generated_constraint(parent_constraint, target_ctrl, rot_locator)
+    if do_rotation and do_translation:
+        parent_constraint = cmds.parentConstraint(
+            rot_locator, target_ctrl, maintainOffset=True)
+        _mark_generated_constraint(parent_constraint, target_ctrl, rot_locator)
+    elif do_rotation:
+        orient_to_target = cmds.orientConstraint(
+            rot_locator, target_ctrl, maintainOffset=True)
+        _mark_generated_constraint(orient_to_target, target_ctrl, rot_locator)
+    elif do_translation:
+        point_to_target = cmds.pointConstraint(
+            tran_locator, target_ctrl, maintainOffset=True)
+        _mark_generated_constraint(point_to_target, target_ctrl, tran_locator)
+    else:
+        cmds.warning("Per-slot setting disabled both rotation and translation; skipping.")
+        cmds.delete(tran_locator)
+        if cmds.attributeQuery("ConnectedCtrl", node=target_ctrl, exists=True):
+            cmds.deleteAttr(target_ctrl, at="ConnectedCtrl")
+        return
 
     for attr in ("tx", "ty", "tz"):
         cmds.setAttr(rot_locator + "." + attr, lock=True, keyable=False)
@@ -491,23 +510,32 @@ def collect_bones(root):
 
 
 def collect_curves(root):
-    """Return ``(node_map, root_names)`` for all NURBS-curve transforms under *root*."""
+    """Return ``(node_map, root_names)`` for controller transforms under *root*.
+
+    Includes transforms with NURBS-curve shapes and locator shapes.
+    """
     all_descendants = cmds.listRelatives(root, allDescendents=True) or []
     all_nodes = [root] + all_descendants
 
-    curve_transforms = []
+    control_transforms = []
+    control_types = {}
     for node in all_nodes:
-        shapes = cmds.listRelatives(node, shapes=True, type='nurbsCurve') or []
-        if shapes:
-            curve_transforms.append(node)
+        curve_shapes = cmds.listRelatives(node, shapes=True, type='nurbsCurve') or []
+        locator_shapes = cmds.listRelatives(node, shapes=True, type='locator') or []
+        if curve_shapes:
+            control_transforms.append(node)
+            control_types[node] = 'curve'
+        elif locator_shapes:
+            control_transforms.append(node)
+            control_types[node] = 'locator'
 
-    curve_set = set(curve_transforms)
+    curve_set = set(control_transforms)
     node_map = {}
     roots = []
 
-    for ct in curve_transforms:
+    for ct in control_transforms:
         parent_name = _find_curve_ancestor(ct, curve_set)
-        node_map[ct] = NodeData(ct, 'curve', parent_name)
+        node_map[ct] = NodeData(ct, control_types.get(ct, 'curve'), parent_name)
         if parent_name is None:
             roots.append(ct)
 

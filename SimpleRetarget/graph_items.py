@@ -45,7 +45,12 @@ def measure_slot_width(slot_data):
     _, metrics = _slot_font_and_metrics()
     src_w = _text_width(metrics, slot_data.source_node or "")
     tgt_w = _text_width(metrics, slot_data.target_node or "(assign target)")
-    return max(SLOT_WIDTH, src_w + tgt_w + _SLOT_FIXED_PADDING)
+    flag_extra = 0
+    if slot_data.rotation_override is False:
+        flag_extra += 36
+    if slot_data.translation_override is False:
+        flag_extra += 36
+    return max(SLOT_WIDTH, src_w + tgt_w + _SLOT_FIXED_PADDING + flag_extra)
 
 
 def compute_slot_divider_x(slot_data, total_width):
@@ -107,6 +112,8 @@ class GraphNodeItem(QtWidgets.QGraphicsRectItem):
                 return COLORS['node_fk_inactive']
         if nd.node_type == 'joint':
             return COLORS['node_bone_hover'] if self._hovered else COLORS['node_bone']
+        if nd.node_type == 'locator':
+            return COLORS['node_locator_hover'] if self._hovered else COLORS['node_locator']
         return COLORS['node_curve_hover'] if self._hovered else COLORS['node_curve']
 
     def paint(self, painter, option, widget=None):
@@ -197,8 +204,20 @@ class SlotNodeItem(QtWidgets.QGraphicsItem):
         target = self.slot_data.target_node or '(empty)'
         mode = ' [IK]' if self.slot_data.is_ik else ''
         self._width = measure_slot_width(self.slot_data)
-        self.setToolTip("Source: {}\nTarget: {}{}".format(
-            self.slot_data.source_node, target, mode))
+        def _fmt(opt):
+            if opt is None:
+                return "Global"
+            return "On" if opt else "Off"
+
+        self.setToolTip(
+            "Source: {}\nTarget: {}{}\nRotation: {}\nTranslation: {}".format(
+                self.slot_data.source_node,
+                target,
+                mode,
+                _fmt(self.slot_data.rotation_override),
+                _fmt(self.slot_data.translation_override),
+            )
+        )
 
     # ---- geometry / paint ----
 
@@ -254,6 +273,31 @@ class SlotNodeItem(QtWidgets.QGraphicsItem):
             painter.setFont(tiny)
             painter.drawText(QtCore.QRectF(div_x - 28, 3, 24, 15),
                              QtCore.Qt.AlignCenter, "IK")
+            painter.setFont(font)
+
+        # per-slot channel disable badges (override global)
+        badge_x = div_x + 4
+        if self.slot_data.rotation_override is False:
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.setBrush(QtGui.QColor('#f0ad4e'))
+            painter.drawRoundedRect(QtCore.QRectF(badge_x, 3, 30, 15), 4, 4)
+            painter.setPen(QtGui.QColor('#111111'))
+            tiny = QtGui.QFont("Segoe UI", 7, QtGui.QFont.Bold)
+            painter.setFont(tiny)
+            painter.drawText(QtCore.QRectF(badge_x, 3, 30, 15),
+                             QtCore.Qt.AlignCenter, "R off")
+            badge_x += 34
+            painter.setFont(font)
+
+        if self.slot_data.translation_override is False:
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.setBrush(QtGui.QColor('#f0ad4e'))
+            painter.drawRoundedRect(QtCore.QRectF(badge_x, 3, 30, 15), 4, 4)
+            painter.setPen(QtGui.QColor('#111111'))
+            tiny = QtGui.QFont("Segoe UI", 7, QtGui.QFont.Bold)
+            painter.setFont(tiny)
+            painter.drawText(QtCore.QRectF(badge_x, 3, 30, 15),
+                             QtCore.Qt.AlignCenter, "T off")
             painter.setFont(font)
 
         # source port dot
@@ -327,6 +371,15 @@ class SlotNodeItem(QtWidgets.QGraphicsItem):
         disconnect_action = menu.addAction("Disconnect")
         disconnect_action.setEnabled(self._connected)
         menu.addSeparator()
+        rot_enable = menu.addAction("Rotation")
+        rot_enable.setCheckable(True)
+        rot_enable.setChecked(self.slot_data.rotation_override is not False)
+
+        tran_enable = menu.addAction("Translation")
+        tran_enable.setCheckable(True)
+        tran_enable.setChecked(self.slot_data.translation_override is not False)
+
+        menu.addSeparator()
         remove_slot = menu.addAction("Delete Slot")
 
         chosen = menu.exec_(event.screenPos())
@@ -340,6 +393,18 @@ class SlotNodeItem(QtWidgets.QGraphicsItem):
             self.matching_panel.relayout_slots()
         elif chosen == disconnect_action:
             self.matching_panel.disconnect_slot(self)
+        elif chosen == rot_enable:
+            self.slot_data.rotation_override = (
+                None if rot_enable.isChecked() else False
+            )
+            self._update_tooltip()
+            self.matching_panel.relayout_slots()
+        elif chosen == tran_enable:
+            self.slot_data.translation_override = (
+                None if tran_enable.isChecked() else False
+            )
+            self._update_tooltip()
+            self.matching_panel.relayout_slots()
         elif chosen == remove_slot:
             self.matching_panel.remove_slot(self.slot_data)
 

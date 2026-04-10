@@ -10,6 +10,8 @@ COLORS = {
     'node_bone_hover':  '#4a8baa',
     'node_curve':       '#8a6b3a',
     'node_curve_hover': '#aa8b4a',
+    'node_locator':     '#5b8a3a',
+    'node_locator_hover': '#71a84a',
     'node_selected':    '#4a90d9',
     'node_ik_inactive': '#444444',
     'node_fk_inactive': '#444444',

@@ -37,7 +37,7 @@ class CharacterPanel(QtWidgets.QWidget):
         # display-mode toggle
         self.mode_group = QtWidgets.QButtonGroup(self)
         self.bone_radio = QtWidgets.QRadioButton("Bones")
-        self.curve_radio = QtWidgets.QRadioButton("Curves")
+        self.curve_radio = QtWidgets.QRadioButton("Curves / Locators")
         self.bone_radio.setChecked(True)
         self.mode_group.addButton(self.bone_radio)
         self.mode_group.addButton(self.curve_radio)

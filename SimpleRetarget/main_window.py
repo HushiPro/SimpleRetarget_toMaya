@@ -156,17 +156,27 @@ class RetargetingTool(QtWidgets.QDialog):
         connected_sources = set()
         connected_targets = set()
 
-        for source, target, is_ik in mappings:
+        for source, target, is_ik, rot_override, tran_override in mappings:
             if not cmds.objExists(source) or not cmds.objExists(target):
                 cmds.warning(
                     "Node '{}' or '{}' does not exist — skipping.".format(
                         source, target))
                 continue
+
+            slot_rot = do_rot if rot_override is None else rot_override
+            slot_tran = do_tran if tran_override is None else tran_override
+            if not slot_rot and not slot_tran:
+                cmds.warning(
+                    "Both rotation and translation are disabled for '{}' — skipping.".format(
+                        source))
+                continue
+
             if is_ik:
-                core.create_ik_connection(source, target, snap, color_idx)
+                core.create_ik_connection(
+                    source, target, snap, color_idx, slot_rot, slot_tran)
             else:
                 core.create_connection(
-                    source, target, do_rot, do_tran, snap, color_idx)
+                    source, target, slot_rot, slot_tran, snap, color_idx)
             connected_sources.add(source)
             connected_targets.add(target)
 

@@ -30,7 +30,7 @@
 
 ![SimpleRetarget UI](./20260409185250_rec_.gif)
 
-- 支持 **Bones**（关节层级）和 **Curves**（NURBS 曲线控制器层级）两种显示模式
+- 支持 **Bones**（关节层级）和 **Curves / Locators**（NURBS 曲线控制器与 locator）两种显示模式
 - 超图内按 **F** 键适配视图，与 Maya 视口选择实时同步
 
 ![SimpleRetarget UI](./20260409185325_rec_.gif)
@@ -39,7 +39,7 @@
 
 - Left panel loads the **Source Character** (skeleton/rig with animation)
 - Right panel loads the **Target Character** (rig to receive animation)
-- Supports both **Bones** (joint hierarchy) and **Curves** (NURBS curve controller hierarchy) display modes
+- Supports both **Bones** (joint hierarchy) and **Curves / Locators** (NURBS curve controllers and locators) display modes
 - Press **F** in the hypergraph to fit view; selection syncs in real-time with Maya viewport
 
 ### 槽位映射系统 / Slot-Based Mapping
@@ -69,12 +69,14 @@
 ### 连接与约束 / Connections & Constraints
 
 - **Rotation** / **Translation** / **Align To Position** 选项，灵活控制约束类型
+- 支持插槽级别的 Rotation / Translation 覆盖开关（右键插槽菜单），优先级高于全局设置
 - 点击 **"Refresh All Connections"** 根据当前映射创建/更新 locator 与约束
 - 已连接的节点在超图中显示绿色边框
 
 ---
 
 - **Rotation** / **Translation** / **Align To Position** options for flexible constraint control
+- Per-slot Rotation / Translation override toggles are available in slot right-click menu and take priority over global options
 - Click **"Refresh All Connections"** to create/update locators and constraints based on current mappings
 - Connected nodes are highlighted with a green border in the hypergraph
 
@@ -101,7 +103,7 @@
 ### 批量导出 / Batch Export
 
 - 点击 **"Batch Bake && Export..."** 打开批量导出窗口
-- 指定连接绑定文件（`.ma`）和多个动画 FBX 文件
+- 指定连接绑定文件（`.ma`）和多个动画文件（`.fbx` / `.ma`）
 - 支持输出为 `.fbx` 或 `.ma` 格式
 - 可选指定导出节点（Export Selected）
 - 进度条与颜色状态反馈（黄色=处理中，绿色=成功，红色=失败）
@@ -109,7 +111,7 @@
 ---
 
 - Click **"Batch Bake && Export..."** to open the batch export dialog
-- Specify a connection rig file (`.ma`) and multiple animation FBX files
+- Specify a connection rig file (`.ma`) and multiple animation files (`.fbx` / `.ma`)
 - Supports output in `.fbx` or `.ma` format
 - Optional export selection (Export Selected)
 - Progress bar with color-coded status feedback (yellow = processing, green = success, red = failed)
@@ -182,7 +184,7 @@ SimpleRetarget.start()
 |---|---|
 | 超图内按 **F** | 适配所有节点到视图 / Fit all nodes in view |
 | 右键点击槽位 | 切换 IK 模式 或 删除槽位 / Toggle IK mode or remove slot |
-| **Bones / Curves** 切换 | 在关节层级和曲线控制器层级间切换显示 / Switch between joint hierarchy and curve controller hierarchy |
+| **Bones / Curves / Locators** 切换 | 在关节层级和曲线控制器/locator层级间切换显示 / Switch between joint hierarchy and curve controller/locator hierarchy |
 | 灰色节点 | 表示当前处于非激活 IK/FK 状态 / Indicates inactive IK/FK state |
 | 绿色边框节点 | 表示已建立活跃连接 / Indicates an active connection |
 
